@@ -1,0 +1,51 @@
+{
+  "name": "@gelatonetwork/web3-functions-template",
+  "version": "0.1.0",
+  "description": "Gelato Web3 Functions template",
+  "url": "https://github.com/gelatodigital/web3-functions-template",
+  "scripts": {
+    "build": "rm -rf dist && tsc",
+    "format": "prettier --write '*/**/*.{js,json,md,ts}'",
+    "format:check": "prettier --check '*/**/*.{js,json,md,ts}'",
+    "lint": "eslint --cache .",
+    "create-task:event": "ts-node src/scripts/create-task-event-listener.ts",
+    "create-task:oracle": "ts-node src/scripts/create-task-oracle.ts",
+    "create-task:secrets": "ts-node src/scripts/create-task-with-secrets.ts",
+    "create-task:ad-board": "ts-node src/scripts/create-task-ad-board.ts",
+    "set-secrets": "ts-node -e 'import setSecrets from \"./src/scripts/set-secrets\"; setSecrets().then(() => {process.exit();}).catch((err) => {console.error(\"Error:\", err.message);process.exit(1);});'",
+    "delete-secrets": "ts-node src/scripts/delete-secrets.ts",
+    "list-secrets": "ts-node src/scripts/list-secrets.ts",
+    "test": "npx w3f test src/web3-functions/beefy-swapper/index.ts --show-logs",
+    "deploy": "npx w3f deploy src/web3-functions/beefy-swapper/index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@tsconfig/recommended": "^1.0.1",
+    "@types/node": "^16.11.12",
+    "@typescript-eslint/eslint-plugin": "^5.40.0",
+    "@typescript-eslint/parser": "^5.6.0",
+    "eslint": "^8.4.1",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^4.0.0",
+    "prettier": "^2.3.2",
+    "ts-node": "^10.9.1",
+    "typescript": "^4.7.0"
+  },
+  "dependencies": {
+    "@gelatonetwork/ops-sdk": "^2.2.0-alpha",
+    "@gelatonetwork/web3-functions-sdk": "^0.4.3",
+    "@kargakis/ethers-multicall": "^0.4.0",
+    "blockchain-addressbook": "^0.41.0",
+    "dotenv": "^16.0.3",
+    "eth-multicall": "^1.4.0",
+    "ethereum-multicall": "^2.15.0",
+    "ethers": "^5.7.1",
+    "ethers-multicall": "^0.2.3",
+    "ky": "^0.32.2",
+    "p-queue": "^7.3.4",
+    "web3": "^1.8.2",
+    "web3-eth-contract": "^1.8.2"
+  }
+}
