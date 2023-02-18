@@ -14,7 +14,8 @@
     "set-secrets": "ts-node -r dotenv/config src/scripts/set-secrets.ts",
     "delete-secrets": "ts-node -r dotenv/config src/scripts/delete-secrets.ts",
     "list-secrets": "ts-node -r dotenv/config src/scripts/list-secrets.ts",
-    "test": "ts-node -r dotenv/config src/scripts/test.ts --function beefy-swapper --showLogs",
+    "test:swapper": "ts-node -r dotenv/config src/scripts/test.ts --function beefy-swapper --showLogs",
+    "test": "ts-node -r dotenv/config src/scripts/test.ts",
     "deploy": "npx w3f deploy src/web3-functions/beefy-swapper/index.ts"
   },
   "keywords": [],
