@@ -1,8 +1,6 @@
 import { Web3Function, Web3FunctionContext } from '@gelatonetwork/web3-functions-sdk';
-import { BigNumber, BigNumberish, Contract, ContractInterface, utils } from 'ethers';
-import ky from 'ky';
+import { BigNumber, BigNumberish, utils } from 'ethers';
 import { addressBookByChainId } from 'blockchain-addressbook';
-import PQueue from 'p-queue'
 import {
   Contract as MulticallContract,
   ContractCall,
@@ -10,148 +8,91 @@ import {
 } from '@kargakis/ethers-multicall';
 import Token from 'blockchain-addressbook/build/types/token';
 import { Provider } from '@ethersproject/abstract-provider';
-
-type TokenWithAmount = {
-  token: Token;
-  amount: BigNumber;
-};
-
-type SwapToken = {
-  address: string;
-  decimals: number;
-  logoURI: string;
-  name: string;
-  symbol: string;
-  tags: string[];
-};
-
-type SwapTx = {
-  from: string;
-  to: string;
-  data: string;
-  value: string;
-  gasPrice: string;
-  gas: string;
-};
-
-type SwapResponse = {
-  fromToken: SwapToken;
-  fromTokenAmount: string;
-  toToken: SwapToken;
-  toTokenAmount: string;
-  protocols: string[];
-  tx: SwapTx;
-};
-
-const SWAPPER_ABI = [
-  {
-    inputs: [],
-    name: 'settings',
-    outputs: [
-      {
-        internalType: 'uint256',
-        name: 'gasPriceLimit',
-        type: 'uint256',
-      },
-      {
-        internalType: 'uint256',
-        name: 'threshold',
-        type: 'uint256',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address[]',
-        name: '_tokens',
-        type: 'address[]',
-      },
-      {
-        internalType: 'bytes[]',
-        name: '_data',
-        type: 'bytes[]',
-      },
-    ],
-    name: 'swap',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-];
-
-const ERC_20 = [
-  {
-    constant: true,
-    inputs: [
-      {
-        name: '_owner',
-        type: 'address',
-      },
-    ],
-    name: 'balanceOf',
-    outputs: [
-      {
-        name: 'balance',
-        type: 'uint256',
-      },
-    ],
-    payable: false,
-    stateMutability: 'view',
-    type: 'function',
-  },
-];
+import {
+  ContextWithUserArgs,
+  Secrets,
+  TokenAmount,
+  UserArgs,
+  Web3FunctionResultSuccess,
+} from './types';
+import { erc20Abi, swapperAbi } from './abi';
+import { getOneInchApi } from './one-inch';
+import { SwapResponse } from './one-inch/types';
+import { uniqBy } from 'lodash';
+import {
+  fetchSettings,
+  getContextWithUserArgs,
+  getSecrets,
+  isErrorLike,
+  isValidChainId,
+  sanitizeError,
+  sanitizeValue,
+} from './utils';
+import { installConsoleSanitizer } from './console';
 
 const SWAP_MIN_INPUT_AMOUNT: BigNumberish = 1000;
 const SWAP_LEAVE: BigNumberish = 1;
 const SWAP_SLIPPAGE: number = 1;
 const MAX_SWAPS_PER_TX: number = 3;
 
-const oneInchQueue = new PQueue({
-    concurrency: 1,
-    intervalCap: 1,
-    interval: 1000,
-    carryoverConcurrencyCount: true,
-    autoStart: true,
-    timeout: 10 * 1000,
-    throwOnTimeout: true,
-  });
-
 Web3Function.onRun(async (context: Web3FunctionContext) => {
-  const { userArgs, gelatoArgs, provider } = context;
-  
-  // const swapperAddress = await context.secrets.get("SWAPPER") as string;
-  const swapperAddress = userArgs.swapper as string;
-  const swapperInterface = new utils.Interface(SWAPPER_ABI);
+  const secrets = await getSecrets(context);
+  installConsoleSanitizer(secrets);
 
+  try {
+    // any console.log() or error thrown from here *should* be automatically sanitized
+    const contextWithUserArgs = getContextWithUserArgs(context);
+    return await run(contextWithUserArgs, secrets);
+  } catch (e: unknown) {
+    console.error(e);
+    return {
+      canExec: false,
+      message: isErrorLike(e) ? sanitizeError(e, secrets, false) : sanitizeValue(e, secrets),
+    };
+  }
+});
+
+async function run(
+  context: ContextWithUserArgs<UserArgs>,
+  secrets: Secrets
+): Promise<Web3FunctionResultSuccess> {
+  const { userArgs, gelatoArgs, provider } = context;
+  const { oneInchApiUrl } = secrets;
+  const { swapper: swapperAddress, targetToken: targetTokenId } = userArgs;
+  const { chainId } = gelatoArgs;
+  const chainIdKey = chainId.toString();
+
+  if (!isValidChainId(chainIdKey)) {
+    throw new Error(`Unsupported chainId: ${chainId}`);
+  }
+
+  const swapperInterface = new utils.Interface(swapperAbi);
   const settings = await fetchSettings(swapperAddress, swapperInterface, provider);
   if (!settings) {
-    return { canExec: false, message: 'Error fetching settings' };
+    throw new Error('Error fetching settings');
   }
 
   const { gasPriceLimit, threshold } = settings;
-
   // <= 0 means no gas limit
   if (gasPriceLimit.gt(0) && gelatoArgs.gasPrice.gt(gasPriceLimit)) {
-    return {
-      canExec: false,
-      message: `Gas price too high: ${gelatoArgs.gasPrice.toString()} > ${gasPriceLimit.toString()}`,
-    };
+    throw new Error(
+      `Gas price too high: ${gelatoArgs.gasPrice.toString()} > ${gasPriceLimit.toString()}`
+    );
   }
 
-  // const TARGET_TOKEN = "USDC";
-  const TARGET_TOKEN = userArgs.targetToken as string;
-  // const chainId = 10;
-  const chainId = gelatoArgs.chainId;
-  const chainTokensById: Token[] = addressBookByChainId[chainId].tokens;
-  const targetToken: Token = chainTokensById[TARGET_TOKEN];
+  const chainTokensById: Record<string, Token> = addressBookByChainId[chainIdKey].tokens;
+  const targetToken: Token = chainTokensById[targetTokenId];
+  if (!targetToken) {
+    throw new Error(`Unsupported target token: ${targetTokenId} for chainId: ${chainIdKey}`);
+  }
+
   const sourceTokens: Token[] = uniqBy(Object.values(chainTokensById), t => t.address).filter(
-    t => t.address !== targetToken.address,
+    t => t.address !== targetToken.address
   );
 
-  const tokensWithBalance = (await fetchTokensWithBalance(sourceTokens, provider, chainId, swapperAddress))
+  const tokensWithBalance = (
+    await fetchTokensWithBalance(sourceTokens, provider, chainId, swapperAddress)
+  )
     .filter(tokenAmount => tokenAmount.amount.gte(SWAP_MIN_INPUT_AMOUNT)) // Filter out tokens with balance < min input amount
     .map(tokenAmount => {
       // Leave some amount in the contract (for gas savings)
@@ -160,25 +101,22 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
     });
 
   if (tokensWithBalance.length === 0) {
-    return {
-      canExec: false,
-      message: `No tokens with balance >=${SWAP_MIN_INPUT_AMOUNT}wei to swap`,
-    };
+    throw new Error(`No tokens with balance >=${SWAP_MIN_INPUT_AMOUNT}wei to swap`);
   }
 
-  const tokensToCheck = sampleSize(tokensWithBalance, MAX_SWAPS_PER_TX);
-  console.log(`Quoting ${tokensToCheck.map(twb => twb.token.symbol).join(', ')} of ${tokensWithBalance.map(twb => twb.token.symbol).join(', ')}`);
+  console.log(`Quoting ${tokensWithBalance.map(twb => twb.token.symbol).join(', ')}`);
 
   const swapInputAddresses: string[] = [];
   const swapData: string[] = [];
 
-  for (const tokenWithBalance of tokensToCheck) {
+  for (const tokenWithBalance of tokensWithBalance) {
     const swap = await fetchSwap(
+      oneInchApiUrl,
       chainId,
       swapperAddress,
       tokenWithBalance,
       targetToken,
-      SWAP_SLIPPAGE,
+      SWAP_SLIPPAGE
     );
 
     if (swap) {
@@ -195,7 +133,11 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   }
 
   if (swapData.length == 0) {
-    return { canExec: false, message: 'No tokens over swappable threshold' };
+    throw new Error(
+      `No tokens over swappable threshold ${utils.formatUnits(threshold, targetToken.decimals)} ${
+        targetToken.symbol
+      }`
+    );
   }
 
   // Return execution call data
@@ -203,54 +145,26 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
     canExec: true,
     callData: swapperInterface.encodeFunctionData('swap', [swapInputAddresses, swapData]),
   };
-});
-
-async function fetchSettings(swapperAddress: string, swapperInterface: ContractInterface, provider: Provider): Promise<{ gasPriceLimit: BigNumber; threshold: BigNumber } | null> {
-  try {
-    const swapperContract = new Contract(swapperAddress, swapperInterface, provider);
-    const settings = await swapperContract.settings();
-    if (settings && 'gasPriceLimit' in settings && 'threshold' in settings) {
-      return settings;
-    }
-  } catch {}
-
-  return null;
-}
-
-function shuffle<T>(items: T[]): T[] {
-   return [...items].sort(() => Math.random() - 0.5);
-}
-  
-  function sampleSize<T>(items: T[], n: number): T[] {
-    return shuffle(items).slice(0, n);
-}
-
-function uniqBy<T>(items: T[], keyFn: (item: T) => string | number | symbol): T[] {
-  return [...new Map(items.map(item => [keyFn(item), item])).values()];
 }
 
 async function fetchSwap(
+  apiUrl: string,
   chainId: number,
   fromAddress: string,
-  input: TokenWithAmount,
+  input: TokenAmount,
   output: Token,
-  slippage: number = 1,
-) : Promise<SwapResponse | null | void> {
+  slippage: number = 1
+): Promise<SwapResponse | null | void> {
   try {
-    const params = new URLSearchParams({
+    const api = getOneInchApi(apiUrl, chainId);
+    return api.getSwap({
       amount: input.amount.toString(),
       fromTokenAddress: input.token.address,
       toTokenAddress: output.address,
       fromAddress,
-      slippage: slippage.toString(),
-      disableEstimate: 'true',
+      slippage,
+      disableEstimate: true,
     });
-    const url = `https://api.1inch.io/v5.0/${chainId}/swap?${params.toString()}`;
-
-    return await oneInchQueue.add(() => ky
-        .get(url, { timeout: 5_000, retry: 0 })
-        .json<SwapResponse>(),
-      );
   } catch (err) {
     console.error(err);
     return null;
@@ -261,12 +175,12 @@ async function fetchTokensWithBalance(
   tokens: Token[],
   provider: Provider,
   chainId: number,
-  swapperAddress: string,
-): Promise<TokenWithAmount[]> {
+  swapperAddress: string
+): Promise<TokenAmount[]> {
   const multicall = new MulticallProvider(provider, chainId);
 
   const calls: ContractCall[] = tokens.map(token => {
-    const tokenContract = new MulticallContract(token.address, ERC_20);
+    const tokenContract = new MulticallContract(token.address, erc20Abi);
     return tokenContract.balanceOf(swapperAddress);
   });
 
