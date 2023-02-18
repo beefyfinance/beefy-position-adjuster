@@ -7,7 +7,7 @@ async function main() {
   // Instantiate provider & signer
   const { chainId, providerUrl, privateKey } = await getConfigFromEnv();
   const provider = new ethers.providers.JsonRpcProvider(providerUrl);
-  const wallet = new ethers.Wallet(privateKey as string, provider);
+  const wallet = new ethers.Wallet(privateKey, provider);
   const web3Function = new Web3Function(chainId, wallet);
   await setSecretsFromEnv(web3Function);
 }
