@@ -2,6 +2,7 @@ export type Config = {
   chainId: number;
   providerUrl: string;
   privateKey: string;
+  swapper: string;
 };
 
 export async function getConfigFromEnv(): Promise<Config> {
@@ -14,9 +15,13 @@ export async function getConfigFromEnv(): Promise<Config> {
   if (!process.env.CHAIN_ID) throw new Error('Missing env CHAIN_ID');
   const chainId = Number(process.env.CHAIN_ID);
 
+  if (!process.env.SWAPPER) throw new Error('Missing env SWAPPER');
+  const swapper = process.env.SWAPPER;
+
   return {
     chainId,
     providerUrl,
     privateKey,
+    swapper
   };
 }

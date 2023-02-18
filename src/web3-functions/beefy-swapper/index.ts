@@ -44,7 +44,7 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
     const contextWithUserArgs = getContextWithUserArgs(context);
     return await run(contextWithUserArgs, secrets);
   } catch (e: unknown) {
-    console.error(e);
+    // console.error(e);
     return {
       canExec: false,
       message: isErrorLike(e) ? sanitizeError(e, secrets, false) : sanitizeValue(e, secrets),
