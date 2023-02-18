@@ -1,43 +1,22 @@
-import dotenv from "dotenv";
-import { ethers } from "ethers";
-import { Web3Function, Secrets } from "@gelatonetwork/ops-sdk";
-dotenv.config();
+import { ethers } from 'ethers';
+import { Web3Function } from '@gelatonetwork/ops-sdk';
+import { setSecretsFromEnv } from './common/secrets';
+import { getConfigFromEnv } from './common/config';
 
-if (!process.env.PRIVATE_KEY) throw new Error("Missing env PRIVATE_KEY");
-const pk = process.env.PRIVATE_KEY;
-
-if (!process.env.PROVIDER_URL) throw new Error("Missing env PROVIDER_URL");
-const providerUrl = process.env.PROVIDER_URL;
-
-// Default Setting
-const chainId = 10;
-
-const setSecrets = async () => {
-  // Instanciate provider & signer
+async function main() {
+  // Instantiate provider & signer
+  const { chainId, providerUrl, privateKey } = await getConfigFromEnv();
   const provider = new ethers.providers.JsonRpcProvider(providerUrl);
-  const wallet = new ethers.Wallet(pk as string, provider);
+  const wallet = new ethers.Wallet(privateKey, provider);
   const web3Function = new Web3Function(chainId, wallet);
+  await setSecretsFromEnv(web3Function);
+}
 
-  let secrets: Secrets = {};
-
-  // Fill up secrets with `SECRETS_*` env
-  console.log("Setting secrets...");
-  Object.keys(process.env)
-    .filter((key) => key.startsWith("SECRETS_"))
-    .forEach((key) => {
-      const secret = process.env[key] as string;
-      secrets = {
-        ...secrets,
-        [key.replace("SECRETS_", "")]: secret,
-      };
-    });
-
-  await web3Function.secrets.set(secrets);
-
-  // Get updated list of secrets
-  const secretsList = await web3Function.secrets.list();
-  console.log(`Updated secrets list: `);
-  console.dir(secretsList);
-};
-
-export default setSecrets;
+main()
+  .then(() => {
+    process.exit();
+  })
+  .catch(e => {
+    console.error(e);
+    process.exit(1);
+  });
