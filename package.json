@@ -15,8 +15,10 @@
     "delete-secrets": "ts-node -r dotenv/config src/scripts/delete-secrets.ts",
     "list-secrets": "ts-node -r dotenv/config src/scripts/list-secrets.ts",
     "test:swapper": "ts-node -r dotenv/config src/scripts/test.ts --function beefy-swapper --showLogs",
+    "test:harvester": "ts-node -r dotenv/config src/scripts/test.ts --function beefy-ocr-harvester --showLogs",
     "test": "ts-node -r dotenv/config src/scripts/test.ts",
-    "deploy": "npx w3f deploy src/web3-functions/beefy-swapper/index.ts"
+    "deploy:harvester": "npx w3f deploy src/web3-functions/beefy-ocr-harvester/index.ts",
+    "deploy:swapper": "npx w3f deploy src/web3-functions/beefy-swapper/index.ts"
   },
   "keywords": [],
   "author": "Beefy Finance",
