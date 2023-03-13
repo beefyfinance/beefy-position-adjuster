@@ -40,7 +40,7 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   if (vaultStratData.length == 0) {
     return {
       canExec: false,
-      message: encodeMessage("No Harvestable Strats")
+      message: "No Harvestable Strats"
     }
   }
 
@@ -50,7 +50,7 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
 
     return {
       canExec: false, 
-      message: encodeMessage(`Gas too High: ${gelatoArgs.gasPrice.toString()}`)
+      message: `Gas too High: ${gelatoArgs.gasPrice.toString()}`
     }
   }
 
@@ -69,7 +69,7 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   ]);
 
   let callData = iface.encodeFunctionData("harvestMultiple", [codedStrats.data.toString(), vaultStratData.length]);
-  return { canExec: true, message: callData }
+  return { canExec: true, callData: callData }
 })
 
 async function getStrats(provider: providers.StaticJsonRpcProvider, time: BigNumber, config: string): Promise<string[]> {
@@ -157,7 +157,7 @@ async function getConfig(provider:providers.StaticJsonRpcProvider , harvester: s
 
   if (!res) {
     return {
-      errorMessage: encodeMessage("Paused Fetch Failed"),
+      errorMessage: "Config Fetch Failed",
       data: data
     }
   }
@@ -199,7 +199,7 @@ async function getAddressArrayEncoded(provider:providers.StaticJsonRpcProvider ,
       let res =  await contract.encodeData(strats[0], strats[0], strats[0], strats.length.toString())  
       if (!res) {
         return {
-          errorMessage: encodeMessage("array build fail"),
+          errorMessage: "array build fail",
           data: data
         }
       }
@@ -213,7 +213,7 @@ async function getAddressArrayEncoded(provider:providers.StaticJsonRpcProvider ,
    
       if (!res) {
         return {
-          errorMessage: encodeMessage("array build fail"),
+          errorMessage: "array build fail",
           data: data
         }
       }
@@ -229,7 +229,7 @@ async function getAddressArrayEncoded(provider:providers.StaticJsonRpcProvider ,
 
       if (!res) {
         return {
-          errorMessage: encodeMessage("array build fail"),
+          errorMessage: "array build fail",
           data: data
         }
       }
@@ -239,15 +239,6 @@ async function getAddressArrayEncoded(provider:providers.StaticJsonRpcProvider ,
         data: res
       }
     }
-  }
-
-  function encodeMessage(msg: string | null): string {
-    if (msg !== null) {
-
-      return ethers.utils.solidityPack( ["string"],[msg])  
-
-    }
-    return "";
   }
   
 function logInfo(msg: string): void {
