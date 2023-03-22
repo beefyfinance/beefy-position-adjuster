@@ -18,7 +18,7 @@ import {
 import { erc20Abi, swapperAbi } from './abi';
 import { getOneInchApi } from './one-inch';
 import { SwapResponse } from './one-inch/types';
-import { uniqBy } from 'lodash';
+import { uniqBy, chunk } from 'lodash';
 import {
   fetchSettings,
   getContextWithUserArgs,
@@ -34,6 +34,7 @@ const SWAP_MIN_INPUT_AMOUNT: BigNumberish = 1000;
 const SWAP_LEAVE: BigNumberish = 1;
 const SWAP_SLIPPAGE: number = 1;
 const MAX_SWAPS_PER_TX: number = 3;
+const BALANCE_BATCH_SiZE: number = 256;
 
 Web3Function.onRun(async (context: Web3FunctionContext) => {
   const secrets = await getSecrets(context);
@@ -184,7 +185,9 @@ async function fetchTokensWithBalance(
     return tokenContract.balanceOf(swapperAddress);
   });
 
-  const results = await multicall.all(calls);
+  const results = (
+    await Promise.all(chunk(calls, BALANCE_BATCH_SiZE).map(chunk => multicall.all(chunk)))
+  ).flat();
 
   return tokens.map((token, i) => ({
     token,
