@@ -13,11 +13,11 @@ import {
 
 import ky from "ky";
 
-
+/*
   const userArgs = {
-    harvester: "0x044eb51f376A6C8D172ce6C279529a60a2185894",
+    harvester: "0xa99Af4E6026D8e7d16eFB2D2Eb0A7190594b1B68",
   }
-
+*/
 
 ///CID=QmTLKdod3oF3LMcs1p6PQKQvMvPP68sJ8grw69eCoQdG3y
 
@@ -32,8 +32,9 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   let harvester = userArgs.harvester as string;
 
   let config = (await getConfig(provider, harvester)).data;
+  let problemStrats = (await getProblemStrats(provider, harvester)).data;
 
-  let vaultStratData = await getStrats(provider, timeNowSecBig, config);
+  let vaultStratData = await getStrats(provider, timeNowSecBig, config, problemStrats);
   
   let configArray = config;
 
@@ -72,7 +73,7 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   return { canExec: true, callData: callData }
 })
 
-async function getStrats(provider: providers.StaticJsonRpcProvider, time: BigNumber, config: string): Promise<string[]> {
+async function getStrats(provider: providers.StaticJsonRpcProvider, time: BigNumber, config: string, problemStrats: string): Promise<string[]> {
   let beefyVaultsApi = 'https://api.beefy.finance/vaults/ethereum';
   let beefyTvlApi = 'https://api.beefy.finance/tvl';
   let configArray = config;
@@ -102,12 +103,15 @@ async function getStrats(provider: providers.StaticJsonRpcProvider, time: BigNum
     if(pausedArray[i] == false) {
       if (currentTvl.gte(lowerTvlLimit)) {
         if (lastHarvestArray[i].lte(time.sub(lowerWaitForExec))) {
-          harvestableStrats.push(stratArray[i].toString());
+          if (!problemStrats.includes(stratArray[i].toString())) {
+            harvestableStrats.push(stratArray[i].toString());
+          }
         }
-  
         if (currentTvl.gte(upperTvlLimit)) {
           if (lastHarvestArray[i].lte(time.sub(upperWaitForExec))) {
-            harvestableStrats.push(stratArray[i].toString());
+            if (!problemStrats.includes(stratArray[i].toString())) {
+              harvestableStrats.push(stratArray[i].toString());
+            }
           }
         }
       }
@@ -147,8 +151,11 @@ async function getLastHarvest(provider: Provider, strats: string[]): Promise<Big
 }
 
 async function getConfig(provider:providers.StaticJsonRpcProvider , harvester: string): Promise<{errorMessage: string | null, data:string}> {
-  let abi = ["function config() external view returns (tuple(uint256,uint256,uint256,uint256,uint256))"
- ]
+  let abi = [
+    "function config() external view returns (tuple(uint256,uint256,uint256,uint256,uint256))",
+    "function problemStrats() external view returns (address[])"
+  ];
+
   let contract = new Contract(harvester , abi,provider);
   let data = "";
   let res = await contract.config();
@@ -158,6 +165,34 @@ async function getConfig(provider:providers.StaticJsonRpcProvider , harvester: s
   if (!res) {
     return {
       errorMessage: "Config Fetch Failed",
+      data: data
+    }
+  }
+
+  return {
+    errorMessage: null,
+    data: res
+  }
+}
+
+async function getProblemStrats(provider:providers.StaticJsonRpcProvider , harvester: string): Promise<{errorMessage: string | null, data:string}> {
+  let abi = [
+    "function config() external view returns (tuple(uint256,uint256,uint256,uint256,uint256))",
+    "function problemStrats() external view returns (address[])"
+  ];
+
+  let contract = new Contract(harvester, abi,provider);
+  let data = "";
+  let res;
+  try {
+    res = await contract.problemStrats();
+  } catch {}
+
+  //logInfo(res);
+
+  if (!res) {
+    return {
+      errorMessage: "Problem Strats Fetch Failed",
       data: data
     }
   }
