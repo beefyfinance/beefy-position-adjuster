@@ -29,7 +29,7 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   let timeNowSec = gelatoArgs.blockTime
   let timeNowSecBig = BigNumber.from(+timeNowSec.toFixed(0));
 
-  let harvester = userArgs.harvester as string;
+  let harvester = "0xf2EeC1baC39306C0761c816d1D33cF7C9Ad6C0Fe"; //userArgs.harvester as string;
 
   let config = (await getConfig(provider, harvester)).data;
   let problemStrats = (await getProblemStrats(provider, harvester)).data;
@@ -105,6 +105,7 @@ async function getStrats(provider: providers.StaticJsonRpcProvider, time: BigNum
         if (lastHarvestArray[i].lte(time.sub(lowerWaitForExec))) {
           if (!problemStrats.includes(stratArray[i].toString())) {
             harvestableStrats.push(stratArray[i].toString());
+            continue;
           }
         }
         if (currentTvl.gte(upperTvlLimit)) {
@@ -153,14 +154,14 @@ async function getLastHarvest(provider: Provider, strats: string[]): Promise<Big
 async function getConfig(provider:providers.StaticJsonRpcProvider , harvester: string): Promise<{errorMessage: string | null, data:string}> {
   let abi = [
     "function config() external view returns (tuple(uint256,uint256,uint256,uint256,uint256))",
-    "function problemStrats() external view returns (address[])"
+    "function problems() external view returns (address[])"
   ];
 
   let contract = new Contract(harvester , abi,provider);
   let data = "";
   let res = await contract.config();
 
-  //logInfo(res);
+  //console.log(res);
 
   if (!res) {
     return {
@@ -178,17 +179,15 @@ async function getConfig(provider:providers.StaticJsonRpcProvider , harvester: s
 async function getProblemStrats(provider:providers.StaticJsonRpcProvider , harvester: string): Promise<{errorMessage: string | null, data:string}> {
   let abi = [
     "function config() external view returns (tuple(uint256,uint256,uint256,uint256,uint256))",
-    "function problemStrats() external view returns (address[])"
+    "function problems() external view returns (address[])"
   ];
 
   let contract = new Contract(harvester, abi,provider);
   let data = "";
-  let res;
-  try {
-    res = await contract.problemStrats();
-  } catch {}
+  let res =  await contract.problems();
 
-  //logInfo(res);
+
+  //console.log(res);
 
   if (!res) {
     return {

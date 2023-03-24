@@ -46,7 +46,7 @@
   "dependencies": {
     "@gelatonetwork/web3-functions-sdk": "^0.4.3",
     "@kargakis/ethers-multicall": "^0.4.0",
-    "blockchain-addressbook": "^0.41.0",
+    "blockchain-addressbook": "^0.41.35",
     "ethereum-multicall": "^2.15.0",
     "ethers": "^5.7.1",
     "ethers-multicall": "^0.2.3",
