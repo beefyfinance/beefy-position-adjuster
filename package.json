@@ -17,10 +17,12 @@
     "test:swapper": "ts-node -r dotenv/config src/scripts/test.ts --function beefy-swapper --showLogs",
     "test:harvester": "ts-node -r dotenv/config src/scripts/test.ts --function beefy-ocr-harvester --showLogs",
     "test:swapperBifi": "ts-node -r dotenv/config src/scripts/test.ts --function beefy-bifi-swapper --showLogs",
+    "test:claimer": "ts-node -r dotenv/config src/scripts/test.ts --function beefy-merkl-claimer --showLogs",
     "test": "ts-node -r dotenv/config src/scripts/test.ts",
     "deploy:harvester": "npx w3f deploy src/web3-functions/beefy-ocr-harvester/index.ts",
     "deploy:swapper": "npx w3f deploy src/web3-functions/beefy-swapper/index.ts",
-    "deploy:swapperBifi": "npx w3f deploy src/web3-functions/beefy-bifi-swapper/index.ts"
+    "deploy:swapperBifi": "npx w3f deploy src/web3-functions/beefy-bifi-swapper/index.ts",
+    "deploy:merklClaimer": "npx w3f deploy src/web3-functions/beefy-merkl-claimer/index.ts"
   },
   "keywords": [],
   "author": "Beefy Finance",

@@ -1,0 +1,15 @@
+import { Web3FunctionContext } from '@gelatonetwork/web3-functions-sdk';
+import { ContextWithUserArgs, ErrorLike, Secrets, Settings, UserArgs } from './types';
+import { ContractInterface } from 'ethers';
+import { Provider } from '@ethersproject/abstract-provider';
+import { addressBookByChainId } from 'blockchain-addressbook';
+export declare function getContextWithUserArgs(context: Web3FunctionContext): ContextWithUserArgs<UserArgs>;
+export declare function getSecrets<T extends Web3FunctionContext>(context: T): Promise<Secrets>;
+export declare function fetchSettings(swapperAddress: string, swapperInterface: ContractInterface, provider: Provider): Promise<Settings>;
+export declare function sanitizeText(message: string, secrets: Record<string, string>): string;
+export declare function isErrorLike(value: unknown): value is ErrorLike;
+export declare function valueToString(value: unknown): string;
+export declare function sanitizeValue(value: unknown, secrets: Record<string, string>): string;
+export declare function errorToString(error: ErrorLike, includeStack?: boolean): string;
+export declare function sanitizeError(error: ErrorLike, secrets: Record<string, string>, includeStack?: boolean): string;
+export declare function isValidChainId(chainId: number | string): chainId is keyof typeof addressBookByChainId;
