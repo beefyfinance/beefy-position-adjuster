@@ -13,6 +13,14 @@ import {
 
 import ky from "ky";
 
+interface HarvesterConfig {
+  lowerWaitForExec: BigNumber,
+  upperWaitForExec: BigNumber,
+  gasPriceLimit: BigNumber,
+  lowerTvlLimit: BigNumber,
+  upperTvlLimit: BigNumber 
+}
+
 /*
   const userArgs = {
     harvester: "0xa99Af4E6026D8e7d16eFB2D2Eb0A7190594b1B68",
@@ -26,12 +34,12 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   const { userArgs, gelatoArgs, provider } = context;
 
 
-  let timeNowSec = gelatoArgs.blockTime
+  let timeNowSec: number = gelatoArgs.blockTime
   let timeNowSecBig = BigNumber.from(+timeNowSec.toFixed(0));
 
-  let harvester = "0xf2EeC1baC39306C0761c816d1D33cF7C9Ad6C0Fe"; //userArgs.harvester as string;
+  let harvester: string = "0xf2EeC1baC39306C0761c816d1D33cF7C9Ad6C0Fe"; //userArgs.harvester as string;
 
-  let config = (await getConfig(provider, harvester)).data;
+  let config: HarvesterConfig | null = (await getConfig(provider, harvester)).data;
   let problemStrats = (await getProblemStrats(provider, harvester)).data;
 
   let vaultStratData = await getStrats(provider, timeNowSecBig, config, problemStrats);
@@ -45,7 +53,7 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
     }
   }
 
-  let beefyGasPriceLimit = configArray[2];
+  let beefyGasPriceLimit: BigNumber = configArray?.gasPriceLimit as BigNumber;
    
   if (gelatoArgs.gasPrice.gte(beefyGasPriceLimit)) {
 
@@ -73,7 +81,7 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   return { canExec: true, callData: callData }
 })
 
-async function getStrats(provider: providers.StaticJsonRpcProvider, time: BigNumber, config: string, problemStrats: string): Promise<string[]> {
+async function getStrats(provider: providers.StaticJsonRpcProvider, time: BigNumber, config: HarvesterConfig | null, problemStrats: string): Promise<string[]> {
   let beefyVaultsApi = 'https://api.beefy.finance/vaults/ethereum';
   let beefyTvlApi = 'https://api.beefy.finance/tvl';
   let configArray = config;
@@ -88,10 +96,10 @@ async function getStrats(provider: providers.StaticJsonRpcProvider, time: BigNum
   let pausedArray = await getPaused(provider, stratArray);
   let lastHarvestArray = await getLastHarvest(provider, stratArray);
 
-  let lowerWaitForExec = configArray[0];
-  let upperWaitForExec = configArray[1];
-  let lowerTvlLimit = configArray[3];
-  let upperTvlLimit = configArray[4];
+  let lowerWaitForExec = configArray?.lowerWaitForExec;
+  let upperWaitForExec = configArray?.upperWaitForExec;
+  let lowerTvlLimit = configArray?.lowerTvlLimit;
+  let upperTvlLimit = configArray?.upperTvlLimit;
 
   let harvestableStrats: string[] = [];
 
@@ -151,22 +159,21 @@ async function getLastHarvest(provider: Provider, strats: string[]): Promise<Big
   return results;
 }
 
-async function getConfig(provider:providers.StaticJsonRpcProvider , harvester: string): Promise<{errorMessage: string | null, data:string}> {
+async function getConfig(provider:providers.StaticJsonRpcProvider , harvester: string): Promise<{errorMessage: string | null, data: HarvesterConfig | null}> {
   let abi = [
     "function config() external view returns (tuple(uint256,uint256,uint256,uint256,uint256))",
     "function problems() external view returns (address[])"
   ];
 
   let contract = new Contract(harvester , abi,provider);
-  let data = "";
-  let res = await contract.config();
+  let res: HarvesterConfig = await contract.config();
 
   //console.log(res);
 
   if (!res) {
     return {
       errorMessage: "Config Fetch Failed",
-      data: data
+      data: null
     }
   }
 
