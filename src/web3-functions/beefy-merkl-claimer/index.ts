@@ -125,7 +125,7 @@ async function getMerklClaim(strat: string): Promise<{errorMessage: string | nul
     let url: string = `https://api.angle.money/v1/merkl?chainId=137&user=${strat}`
 
     let res: any = await ky
-            .get(url)
+            .get(url, {timeout: 25000})
             .json();
 
     if (!res) {

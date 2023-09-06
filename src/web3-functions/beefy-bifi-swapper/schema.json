@@ -4,6 +4,10 @@
     "memory": 128, 
     "timeout": 30,
     "userArgs":{
-      "swapper": "string"
+      "swapper": "string",
+      "from": "string",
+      "to": "string",
+      "swapSize": "number",
+      "swapPeriod": "number"
     }
   }
