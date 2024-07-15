@@ -1,8 +1,8 @@
 {
-  "name": "@beefyfinance/beefy-web3function-repo",
+  "name": "@beefyfinance/beefy-position-adjuster",
   "version": "0.1.0",
-  "description": "Gelato Web3 Functions template",
-  "url": "https://github.com/beefyfinance/Beefy-Web3Function-Repo",
+  "description": "Beefy Position Adjuster",
+  "url": "https://github.com/beefyfinance/Beefy-Position-Adjuster",
   "private": true,
   "scripts": {
     "prepare": "husky install",
@@ -10,19 +10,12 @@
     "format": "prettier --write ./src/**/*.{js,json,md,ts}",
     "format:check": "prettier --check ./src/**/*.{js,json,md,ts}",
     "lint": "eslint --cache .",
-    "create-task:secrets": "ts-node src/scripts/create-task-with-secrets.ts",
     "set-secrets": "ts-node -r dotenv/config src/scripts/set-secrets.ts",
     "delete-secrets": "ts-node -r dotenv/config src/scripts/delete-secrets.ts",
     "list-secrets": "ts-node -r dotenv/config src/scripts/list-secrets.ts",
-    "test:swapper": "ts-node -r dotenv/config src/scripts/test.ts --function beefy-swapper --showLogs",
-    "test:harvester": "ts-node -r dotenv/config src/scripts/test.ts --function beefy-ocr-harvester --showLogs",
-    "test:swapperBifi": "ts-node -r dotenv/config src/scripts/test.ts --function beefy-bifi-swapper --showLogs",
-    "test:claimer": "ts-node -r dotenv/config src/scripts/test.ts --function beefy-merkl-claimer --showLogs",
+    "test:tickMover": "ts-node -r dotenv/config src/scripts/test.ts --function beefy-tick-mover --showLogs",
     "test": "ts-node -r dotenv/config src/scripts/test.ts",
-    "deploy:harvester": "npx w3f deploy src/web3-functions/beefy-ocr-harvester/index.ts",
-    "deploy:swapper": "npx w3f deploy src/web3-functions/beefy-swapper/index.ts",
-    "deploy:swapperBifi": "npx w3f deploy src/web3-functions/beefy-bifi-swapper/index.ts",
-    "deploy:merklClaimer": "npx w3f deploy src/web3-functions/beefy-merkl-claimer/index.ts"
+    "deploy:tickMover": "npx w3f deploy src/web3-functions/beefy-tick-mover/index.ts"
   },
   "keywords": [],
   "author": "Beefy Finance",

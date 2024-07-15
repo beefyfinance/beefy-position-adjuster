@@ -4,6 +4,8 @@
     "memory": 128, 
     "timeout": 30,
     "userArgs":{
-      "claimer": "string"
+      "cadence": "number",
+      "chain": "string",
+      "multicall": "string"
     }
   }
