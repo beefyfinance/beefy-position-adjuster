@@ -1,3 +1,6 @@
 {
-  "multicall": "0xdad10C9F44acaE635c50e430DE25707C0866bcd2"
+  "cadence": 21600,
+  "chain": "bsc",
+  "multicall": "0xe1F8EE09d8fAD3660F02EA80041D53a34de56AA1",
+  "rangeFinder": "0xc3781Bd4684B51684b9A74163610c6eb1bd48154"
 }

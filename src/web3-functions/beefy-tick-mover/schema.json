@@ -6,6 +6,7 @@
     "userArgs":{
       "cadence": "number",
       "chain": "string",
-      "multicall": "string"
+      "multicall": "string",
+      "rangeFinder": "string"
     }
   }

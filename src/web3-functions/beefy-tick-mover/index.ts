@@ -6,6 +6,7 @@ import {
 } from "@gelatonetwork/web3-functions-sdk";
 
 import ky from "ky";
+import { get } from "lodash";
 
 Web3Function.onRun(async (context: Web3FunctionContext) => {
   const { userArgs, gelatoArgs, provider } = context;
@@ -15,8 +16,9 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   let timeNowSecBig = BigNumber.from(+timeNowSec.toFixed(0));
 
   let multicall: string = userArgs.multicall as string;
+  let rangeFinder: string = userArgs.rangeFinder as string;
 
-  let vaultStratData = await getStrats(provider, multicall, timeNowSecBig, userArgs.chain as string, userArgs.cadence as number);
+  let vaultStratData = await getStrats(provider, multicall, rangeFinder, timeNowSecBig, userArgs.chain as string, userArgs.cadence as number);
 
   if (vaultStratData.length == 0) {
     return {
@@ -43,7 +45,7 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   return { canExec: true, callData: callData }
 })
 
-async function getStrats(provider: providers.StaticJsonRpcProvider, multicall: string, time: BigNumber, chain: string, cadence: number): Promise<string[]> {
+async function getStrats(provider: providers.StaticJsonRpcProvider, multicall: string, rangeFinder: string, time: BigNumber, chain: string, cadence: number): Promise<string[]> {
   let beefyVaultsApi = `https://api.beefy.finance/cow-vaults/${chain}`;
 
   let res = await getApiCall(beefyVaultsApi);
@@ -59,6 +61,7 @@ async function getStrats(provider: providers.StaticJsonRpcProvider, multicall: s
   });
 
   let multicallData = await getMulticallData(provider, stratArray, multicall);
+  let rangeData = await getRangeData(provider, stratArray, rangeFinder);
   let stratsNeedingTickMovement: string[] = [];
 
   if (!multicallData.data) {
@@ -66,12 +69,16 @@ async function getStrats(provider: providers.StaticJsonRpcProvider, multicall: s
   }
 
   let timeData = multicallData.data[0];
-  let calmData = multicallData.data[1];
+  let calmData = rangeData.data[1];
+  let inRangeData = rangeData.data[0];
 
   for(let i = 0; i < stratArray.length; i++) {  
     let timeDataPlusWait = timeData[i].add(cadence);
+
     if (time.gte(timeDataPlusWait)) {
-      if (calmData[i]) stratsNeedingTickMovement.push(stratArray[i]);
+      if (!inRangeData[i] && calmData[i]) {
+        console.log("Strat Needs Tick Movement: " + stratArray[i]);
+      }
     }
   };
 
@@ -89,7 +96,7 @@ async function getMulticallData(provider:providers.StaticJsonRpcProvider, stratA
   let contract = new Contract(multicall, abi,provider);
  // let adjustmentRes: boolean[] = await contract.positionNeedsTickAdjustment(stratArray);
   let lastAdjustmentRes: BigNumber[] = await contract.lastPositionAdjustments(stratArray);
-  let isCalmRes: boolean[] = await contract.isCalm(stratArray);
+  //let isCalmRes: boolean[] = await contract.isCalm(stratArray);
 
   if (!lastAdjustmentRes) {
     return {
@@ -100,7 +107,31 @@ async function getMulticallData(provider:providers.StaticJsonRpcProvider, stratA
 
   return {
     errorMessage: null,
-    data: [lastAdjustmentRes, isCalmRes]
+    data: [lastAdjustmentRes]
+  }
+}
+
+async function getRangeData(provider:providers.StaticJsonRpcProvider, stratArray: string[], multicall: string): Promise<{errorMessage: string | null, data: any | null }> {
+  let abi = [
+    "function positionNeedsTickAdjustment(address[]) external view returns (bool[])",
+    "function lastPositionAdjustments(address[] memory _strategies) external view returns (uint256[] memory)",
+    "function isCalm(address[] memory _strategies) external view returns (bool[])"
+  ];
+
+  let contract = new Contract(multicall, abi,provider);
+  let adjustmentRes: boolean[] = await contract.positionNeedsTickAdjustment(stratArray);
+  let isCalmRes: boolean[] = await contract.isCalm(stratArray);
+
+  if (!adjustmentRes) {
+    return {
+      errorMessage: "Multicall Fetch Failed",
+      data: null
+    }
+  }
+
+  return {
+    errorMessage: null,
+    data: [adjustmentRes, isCalmRes]
   }
 }
 
